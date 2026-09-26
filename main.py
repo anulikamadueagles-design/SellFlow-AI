@@ -253,13 +253,21 @@ def ai(x:Ask,authorization:Optional[str]=Header(None)):
     body=json.dumps({'model':model,'input':prompt}).encode(); req=urllib.request.Request('https://api.openai.com/v1/responses',data=body,headers={'Authorization':'Bearer '+key,'Content-Type':'application/json'})
     try:
         with urllib.request.urlopen(req,timeout=45) as res:
-            data=json.loads(res.read());
-            if data.get('output_text'): return {'reply':data['output_text']}
-            parts=[]
-            for item in data.get('output',[]):
-                for content in item.get('content',[]):
-                    if content.get('type')=='output_text': parts.append(content.get('text',''))
-            return {'reply':'\n'.join(parts) or 'The AI provider returned no text.'}
+            data=json.loads(res.read())
+            def extract_text(value):
+                if isinstance(value,str): return value
+                if isinstance(value,list):
+                    return '\n'.join(x for x in (extract_text(v) for v in value) if x)
+                if isinstance(value,dict):
+                    if isinstance(value.get('text'),str): return value['text']
+                    for key in ('output_text','content','output','message','response'):
+                        if key in value:
+                            found=extract_text(value[key])
+                            if found: return found
+                return ''
+            reply=extract_text(data.get('output_text') or data.get('output') or data)
+            if not reply: reply='The AI provider returned no readable text. Please try again.'
+            return {'reply':reply}
     except urllib.error.HTTPError as e:
         detail=e.read().decode(errors='ignore')[:300]
         raise HTTPException(502,'AI provider request failed: '+detail)
