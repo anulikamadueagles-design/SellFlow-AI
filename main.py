@@ -76,13 +76,26 @@ def db():
     );
     """)
     defaults = {
-        "payment_account_name": "Add your account name in Admin → Payment Settings",
-        "payment_account_number": "Add your account number in Admin → Payment Settings",
-        "payment_bank_name": "Add your bank / wallet name in Admin → Payment Settings",
+        "payment_account_name": "Dauda Joseph",
+        "payment_account_number": "8085743879",
+        "payment_bank_name": "Opay",
         "payment_instructions": "Transfer the exact plan amount, then upload your payment screenshot. Your subscription starts after admin verification.",
     }
     for k, v in defaults.items():
         c.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (k, v))
+
+    # Pre-fill the payment account supplied by the site owner.
+    # Only replace the original placeholder values; an admin-edited value is preserved.
+    placeholders = {
+        "payment_account_name": "Add your account name in Admin → Payment Settings",
+        "payment_account_number": "Add your account number in Admin → Payment Settings",
+        "payment_bank_name": "Add your bank / wallet name in Admin → Payment Settings",
+    }
+    for k, placeholder in placeholders.items():
+        c.execute(
+            "UPDATE settings SET value=? WHERE key=? AND (value IS NULL OR value='' OR value=?)",
+            (defaults[k], k, placeholder)
+        )
     c.commit()
     return c
 
