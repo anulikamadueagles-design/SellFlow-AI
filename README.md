@@ -1,39 +1,93 @@
-# SellFlow AI — mobile-first small business SaaS
+# SellFlow AI — Flat GitHub/Render Project
 
-A working starter SaaS with account registration/login, per-user product/customer/order/invoice/expense records, dashboard totals, optional live AI via OpenAI, and optional Paystack transaction initialization.
+SellFlow AI is a mobile-first small-business workspace with products, customers, orders, invoices, expenses, AI assistance, subscriptions and manual bank-transfer payment confirmation.
 
-## Flat project layout
-All project files are at the repository root: `main.py`, `index.html`, `styles.css`, `app.js`, `requirements.txt`, `render.yaml`, and this README. No nested project folder is required.
+## Flat project structure
 
-## Run locally
-Requires Python 3.11+.
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-export JWT_SECRET="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
-Open http://localhost:8000
+Upload **all files directly into the GitHub repository root**. Do not create another `SellFlow-AI` folder inside the repository.
 
-## Deploy on Render
-1. Create a new GitHub repository named `SellFlow-AI`.
-2. Upload the contents of this ZIP directly to the repository root (not the ZIP's enclosing folder).
-3. In Render, choose **New + → Blueprint**, connect the repository, and apply `render.yaml`.
-4. Set `OPENAI_API_KEY` to enable live AI. Set `PAYSTACK_SECRET_KEY` to enable Paystack transaction initialization. Keep secret keys only in Render Environment; never commit them.
-5. Deploy and open the generated `https://sellflow-ai-....onrender.com` URL.
+Files:
 
-The included Blueprint uses a paid Starter web service because this MVP stores SQLite data on the service filesystem. For durable production data, migrate to managed PostgreSQL and configure persistent storage or use a Postgres database. Render's environment-variable guidance: https://render.com/docs/configure-environment-variables
+- `main.py` — FastAPI backend, SQLite data, auth, subscriptions, payment confirmations and admin review
+- `index.html` — app shell
+- `styles.css` — responsive UI
+- `app.js` — frontend application
+- `requirements.txt` — Python dependencies
+- `.python-version` — pins Render to Python 3.13.5
+- `render.yaml` — optional config file; you can ignore it when deploying manually
+- `.gitignore`
 
-## Included
-- Responsive dark dashboard and mobile navigation
-- Signup/signin with password hashing and signed expiring sessions
-- Isolated per-account records
-- Products, customers, orders, invoices, expenses CRUD
-- Revenue/profit/pending-payment summaries
-- Optional OpenAI-powered assistant
-- Optional Paystack payment initialization endpoint
-- Health endpoint and Render Blueprint
+## Render deployment — use Web Service
 
-## Production work still required
-This is a complete deployable MVP, not a claim of audited production readiness. Before taking real customer payments at scale, add PostgreSQL migrations/backups, email verification/password reset, rate limiting, audit logging, verified Paystack webhooks and subscription entitlements, privacy/terms pages, automated tests, and security review. Payment initialization alone does not verify that a payment has succeeded.
+Use the normal **Render → New + → Web Service** flow. You do **not** need Blueprint deployment.
+
+Settings:
+
+- Runtime: Python 3
+- Build Command: `pip install -r requirements.txt`
+- Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- Branch: `main`
+- Instance: Free/lowest-cost available option while testing
+
+The `.python-version` file pins Python to 3.13.5 to avoid Python 3.14 build problems with some dependencies.
+
+## Required admin setup
+
+To review payment screenshots and activate subscriptions, add these Render Environment Variables:
+
+- `ADMIN_EMAIL` = the email you will use for the admin login
+- `ADMIN_PASSWORD` = a strong password of at least 10 characters
+- `ADMIN_NAME` = your preferred admin display name
+
+On startup, SellFlow creates or promotes that account to admin.
+
+## Optional live AI
+
+Add:
+
+- `OPENAI_API_KEY` = your server-side OpenAI API key
+- `AI_MODEL` = optional model name supported by your OpenAI account/API
+
+Never put the API key in GitHub or frontend JavaScript.
+
+## Payment confirmation workflow
+
+1. Customer creates a free account.
+2. Customer opens **Upgrade & billing**.
+3. Customer chooses Starter, Pro or Business.
+4. Customer sees the bank/wallet account details.
+5. Customer transfers the exact amount outside the website.
+6. Customer taps **Send payment confirmation**.
+7. The phone file/gallery picker opens.
+8. Customer selects a JPG/PNG/WebP screenshot (maximum 5 MB).
+9. The screenshot and payment reference are submitted.
+10. Admin signs in and opens **Admin payments**.
+11. Admin opens the authenticated screenshot and approves or rejects it.
+12. Approval activates the selected plan for 30 days.
+
+## Set the account customers should pay
+
+After signing in with the admin account:
+
+**Admin payments → Payment account settings**
+
+Enter the exact account name, account number, bank/wallet name and instructions. Customers will see those details in the subscription dialog.
+
+The project intentionally does **not** hard-code the handwritten bank details from the supplied image because financial account details should be verified and editable by the owner rather than copied from an unclear image.
+
+## Current launch prices
+
+These are the starting monthly prices in this build:
+
+- Free — ₦0
+- Starter — ₦4,999/month — 50 AI calls/month
+- Pro — ₦9,999/month — 200 AI calls/month
+- Business — ₦19,999/month — 600 AI calls/month
+
+These are launch prices, not a guarantee of revenue. Current Nigerian business-software pricing shows several products around ₦4,000–₦15,000/month for entry/growth plans, while more advanced offerings can be substantially higher. Re-check your market before changing prices.
+
+## Important storage note
+
+Payment screenshots are stored in the SQLite database in this MVP. On a normal Render service, the local filesystem/database is not durable across every redeploy/restart. For a real paid launch, move the database to PostgreSQL and payment screenshots to durable object storage (for example, S3-compatible storage or another persistent provider) before relying on this as your only payment record.
+
+Also add Terms/Privacy, rate limiting, email verification/password reset, audit logs, automated tests, backup/restore and a security review before handling significant customer volume.

@@ -2,16 +2,5 @@ services:
   - type: web
     name: sellflow-ai
     runtime: python
-    plan: starter
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /api/health
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.8
-      - key: JWT_SECRET
-        generateValue: true
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: PAYSTACK_SECRET_KEY
-        sync: false
