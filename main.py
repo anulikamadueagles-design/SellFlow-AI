@@ -255,17 +255,34 @@ def ai(x:Ask,authorization:Optional[str]=Header(None)):
         with urllib.request.urlopen(req,timeout=45) as res:
             data=json.loads(res.read())
             def extract_text(value):
-                if isinstance(value,str): return value
-                if isinstance(value,list):
-                    return '\n'.join(x for x in (extract_text(v) for v in value) if x)
-                if isinstance(value,dict):
-                    if isinstance(value.get('text'),str): return value['text']
-                    for key in ('output_text','content','output','message','response'):
+                # Responses API payloads can contain nested objects/arrays. Never stringify
+                # those objects directly into the UI; recursively extract human-readable text.
+                if isinstance(value, str):
+                    return value.strip()
+                if isinstance(value, (int, float, bool)):
+                    return str(value)
+                if isinstance(value, list):
+                    parts=[]
+                    for item in value:
+                        found=extract_text(item)
+                        if found and found not in parts: parts.append(found)
+                    return '\n'.join(parts)
+                if isinstance(value, dict):
+                    for key in ('output_text','text','reply','content','message','output','response'):
                         if key in value:
                             found=extract_text(value[key])
                             if found: return found
+                    # OpenAI content blocks commonly expose type + text.
+                    if value.get('type') in ('output_text','text') and isinstance(value.get('text'),str):
+                        return value['text'].strip()
+                    parts=[]
+                    for key,val in value.items():
+                        if key in ('id','object','created','model','usage','status','type','role'): continue
+                        found=extract_text(val)
+                        if found and found not in parts: parts.append(found)
+                    return '\n'.join(parts)
                 return ''
-            reply=extract_text(data.get('output_text') or data.get('output') or data)
+            reply=extract_text(data)
             if not reply: reply='The AI provider returned no readable text. Please try again.'
             return {'reply':reply}
     except urllib.error.HTTPError as e:
